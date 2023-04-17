@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
+
+use App\Models\Permission;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,6 +24,21 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->registerUserAccessToGates();
+    }
+
+    protected function registerUserAccessToGates()
+    {
+        try {
+            foreach (Permission::pluck('title') as $permission) {
+                Gate::define($permission, function ($user) use ($permission) {
+                    return $user->roles()->whereHas('permissions', function ($q) use ($permission) {
+                        $q->where('title', $permission);
+                    })->count() > 0;
+                });
+            }
+        } catch (\Exception $e) {
+            info('registerUserAccessToGates: Database not found or not yet migrated. Ignoring user permissions while booting app.');
+        }
     }
 }

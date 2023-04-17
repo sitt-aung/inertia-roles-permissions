@@ -33,6 +33,12 @@ class HandleInertiaRequests extends Middleware
         return array_merge(parent::share($request), [
             'auth' => [
                 'user' => $request->user(),
+                'can'  => $request->user()?->loadMissing('roles.permissions')
+                    ->roles->flatMap(function ($role) {
+                        return $role->permissions;
+                    })->map(function ($permission) {
+                        return [$permission['title'] => auth()->user()->can($permission['title'])];
+                    })->collapse()->all(),
             ],
             'ziggy' => function () use ($request) {
                 return array_merge((new Ziggy)->toArray(), [
